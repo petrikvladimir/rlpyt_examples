@@ -32,9 +32,8 @@ horizon = 200
 
 class MyEnv(Env):
 
-    def __init__(self, evaluation=False) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.evaluation = evaluation
         self.state = None
         self.current_goal = None
         self.iter = 0
@@ -54,10 +53,7 @@ class MyEnv(Env):
 
     def reset(self):
         self.state = np.zeros(2)
-        if self.evaluation:
-            self.current_goal = self.goal_space.high
-        else:
-            self.current_goal = self.goal_space.sample()
+        self.current_goal = self.goal_space.sample()
         self.iter = 0
         return self.get_obs()
 
@@ -70,7 +66,7 @@ def build_and_train(run_id=0):
     sampler = SerialSampler(
         EnvCls=MyEnv,
         env_kwargs=dict(),
-        eval_env_kwargs=dict(evaluation=False),
+        eval_env_kwargs=dict(),
         batch_T=horizon,
         batch_B=64,
         max_decorrelation_steps=0,

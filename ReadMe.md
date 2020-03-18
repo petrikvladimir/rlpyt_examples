@@ -19,7 +19,17 @@ pip install PyQt5
 
 # Notes
 
-- it seems that evaluation is random (in tf_agents it was greedy policy instead); can be modified based on mode in gaussian.py
+- The evaluation of the agent is not greedy (which is default in tf_agents).
+In your model definition you can switch to greedy evaluation with (see `rl_example_2`):
+```
+For categorical dist.:
+if self._mode == "eval":
+    action = torch.argmax(agent_info.dist_info.prob, dim=-1)
+
+For normal dist.:
+if self._mode == "eval":
+    action = agent_info.dist_info.mean
+```
 
 # Examples
 ## Example 1
@@ -31,4 +41,14 @@ tensorboard --logdir data # check localhost:6006 and see Return plot
 
 python rl_example_1.py --test # evaluate using random policy
 python rl_example_1.py --test --use_mode # evaluate using mean of the random policy
+```
+
+## Example 2
+Reacher 2D with discrete action space.
+```
+python rl_example_1.py --greedy_eval
+tensorboard --logdir data # check localhost:6006 and see Return plot
+
+python rl_example_1.py --test
+python rl_example_1.py --test --greedy_eval
 ```

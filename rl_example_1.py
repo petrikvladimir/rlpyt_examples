@@ -10,7 +10,7 @@ import datetime
 import os
 
 from rlpyt.samplers.serial.sampler import SerialSampler
-from rlpyt.runners.minibatch_rl import MinibatchRlEval
+from rlpyt.runners.minibatch_rl import MinibatchRl
 from rlpyt.spaces.float_box import FloatBox
 from rlpyt.utils.logging.context import logger_context
 from rlpyt.envs.base import *
@@ -79,7 +79,7 @@ def build_and_train(run_id=0):
         ModelCls=MujocoFfModel,
         model_kwargs=model_params,
     )
-    runner = MinibatchRlEval(
+    runner = MinibatchRl(
         algo=algo,
         agent=agent,
         sampler=sampler,

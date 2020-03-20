@@ -10,7 +10,7 @@ import datetime
 import os
 
 from rlpyt.samplers.serial.sampler import SerialSampler
-from rlpyt.runners.minibatch_rl import MinibatchRlEval
+from rlpyt.runners.minibatch_rl import MinibatchRl
 from rlpyt.spaces.float_box import FloatBox
 from rlpyt.spaces.int_box import IntBox
 from rlpyt.utils.logging.context import logger_context
@@ -18,7 +18,6 @@ from rlpyt.envs.base import *
 from rlpyt.algos.pg.ppo import *
 from rlpyt.agents.pg.gaussian import *
 from rlpyt.agents.pg.categorical import *
-from rlpyt.models.pg.mujoco_ff_model import MujocoFfModel
 from rlpyt.models.mlp import MlpModel
 import matplotlib.pyplot as plt
 from rlpyt.utils.tensor import infer_leading_dims, restore_leading_dims
@@ -28,7 +27,7 @@ plt.switch_backend('Qt5Agg')
 plt.rcParams['axes.grid'] = True
 plt.rcParams['legend.fancybox'] = True
 
-horizon = 200
+horizon = 500
 
 
 class MyEnv(Env):
@@ -120,7 +119,7 @@ def build_and_train(run_id=0, greedy_eval=False):
         eval_max_steps=int(1e6),
         eval_max_trajectories=64,
     )
-    runner = MinibatchRlEval(
+    runner = MinibatchRl(
         algo=PPO(entropy_loss_coeff=0., learning_rate=3e-4),
         agent=MyAgent(greedy_eval),
         sampler=sampler,

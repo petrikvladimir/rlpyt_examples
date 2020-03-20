@@ -56,7 +56,7 @@ class BatchedEpisodicSampler(BaseSampler):
         logger.log("BatchedEpisodicSampler initialized.")
         return examples
 
-    def obtain_samples(self, itr):
+    def obtain_samples(self, itr, mode='sample'):
         agent_buf, env_buf = self.samples_np.agent, self.samples_np.env
 
         # Reset agent inputs
@@ -70,7 +70,10 @@ class BatchedEpisodicSampler(BaseSampler):
         agent_buf.prev_action[0], env_buf.prev_reward[0] = action, reward  # Leading prev_action.
 
         # perform episode
-        self.agent.sample_mode(itr)
+        if mode == 'sample':
+            self.agent.sample_mode(itr)
+        elif mode == 'eval':
+            self.agent.eval_mode(itr)
         traj_infos = [self.TrajInfoCls(**self.traj_info_kwargs) for _ in range(self.batch_spec.B)]
         for t in range(self.batch_spec.T):
             env_buf.observation[t] = observation

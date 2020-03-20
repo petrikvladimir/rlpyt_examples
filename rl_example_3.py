@@ -73,75 +73,66 @@ class MyEnv(Env):
         return self.batch_T
 
 
-def build_and_train(run_id=0, greedy_eval=False):
+def load_params(log_dir, run_id, test_date):
+    if test_date is None:
+        exps = os.listdir(log_dir)
+        exps.sort(reverse=True)
+        test_date = exps[0]
+        print('Using the latest experiment with timestamp: {}'.format(test_date))
+    params_path = '{}{}/run_{}/params.pkl'.format(log_dir, test_date, run_id)
+    return torch.load(params_path)
+
+
+def plot_obs(observations, max_obs=5):
+    from matplotlib.cm import get_cmap
+    cmap = get_cmap('tab20')
+    colors = cmap.colors
+    fig, axes = plt.subplots(1, 1, squeeze=False)
+    ax = axes[0, 0]
+    for i in range(np.minimum(observations.shape[1], max_obs)):
+        c = colors[i % 20]
+        ax.plot(observations[0, i, 2], observations[0, i, 3], 'o', label='Goal', color=c)
+        ax.plot(observations[0, i, 0], observations[0, i, 1], 'x', label='Start', color=c)
+        ax.plot(observations[:, i, 0], observations[:, i, 1], '-', label='Path', color=c)
+    ax.set_xlim(-1, 1)
+    ax.set_ylim(-1, 1)
+    plt.show()
+
+
+def build_and_train(run_id=0, greedy_eval=False, test=True, test_date=None):
     sampler = BatchedEpisodicSampler(
         EnvCls=MyEnv,
         env_kwargs=dict(),
         batch_T=500,
         batch_B=64,
     )
-
+    log_dir = "data/rl_example_3/"
+    init_agent = None
+    if test:
+        data = load_params(log_dir, run_id, test_date)
+        init_agent = data['agent_state_dict']
     runner = MinibatchRl(
         algo=PPO(entropy_loss_coeff=0., learning_rate=3e-4),
         agent=AgentPgDiscrete(greedy_eval,
                               model_kwargs={
                                   'policy_hidden_sizes': [64, 64],
                                   'value_hidden_sizes': [64, 64],
-                              }),
+                              },
+                              initial_model_state_dict=init_agent,
+                              ),
         sampler=sampler,
         n_steps=int(400 * sampler.batch_size),
         log_interval_steps=int(10 * sampler.batch_size),
     )
-
-    log_dir = "data/rl_example_3/{}".format(datetime.datetime.today().strftime("%Y%m%d_%H%M"))
-    with logger_context(log_dir, run_id, 'Reacher2D', snapshot_mode="last",
-                        use_summary_writer=True, override_prefix=True):
-        runner.train()
-
-
-def build_and_test(run_id=0, test_date=None, greedy_eval=False):
-    log_dir = "data/rl_example_3/"
-    if test_date is None:
-        exps = os.listdir(log_dir)
-        exps.sort(reverse=True)
-        test_date = exps[0]
-        print('Using the latest experiment with timestamp: {}'.format(test_date))
-
-    params_path = '{}{}/run_{}/params.pkl'.format(log_dir, test_date, run_id)
-    data = torch.load(params_path)
-    agent = AgentPgDiscrete(greedy_eval=greedy_eval, initial_model_state_dict=data['agent_state_dict'],
-                            model_kwargs={
-                                'policy_hidden_sizes': [64, 64],
-                                'value_hidden_sizes': [64, 64],
-                            })
-    env = MyEnv()
-    agent.initialize(env.spaces)
-    agent.eval_mode(0)
-    while True:
-        observations = []
-        obs = env.reset()
-        action = env.action_space.sample()
-        rew = 0.
-        for _ in range(horizon):
-            observations.append(obs)
-            action, action_info = agent.step(torch.from_numpy(obs).float(),
-                                             torch.from_numpy(action).float(),
-                                             torch.tensor(rew).float())
-            action = action.numpy()
-            # if use_mode:
-            #     action = action_info.dist_info.mean.numpy()  # use mean of the distribution
-            obs, rew, _, _ = env.step(action=action)
-        observations = np.stack(observations, axis=0)
-
-        fig, axes = plt.subplots(1, 1, squeeze=False)
-        ax = axes[0, 0]
-        ax.plot(observations[0, 2], observations[0, 3], 'o', label='Goal', color='tab:green')
-        ax.plot(observations[0, 0], observations[0, 1], 'x', label='Start', color='tab:blue')
-        ax.plot(observations[:, 0], observations[:, 1], '--k', label='Path')
-        plt.legend()
-        ax.set_xlim(-1, 1)
-        ax.set_ylim(-1, 1)
-        plt.show()
+    if test:
+        runner.startup()
+        sampler.obtain_samples(0, 'eval')
+        obs = sampler.samples_np.env.observation
+        plot_obs(obs)
+    else:
+        with logger_context("{}{}".format(log_dir, datetime.datetime.today().strftime("%Y%m%d_%H%M")),
+                            run_id, 'Reacher2D', snapshot_mode="last", use_summary_writer=True, override_prefix=True):
+            runner.train()
 
 
 if __name__ == "__main__":
@@ -153,7 +144,4 @@ if __name__ == "__main__":
     parser.add_argument('--test_date', type=str, default=None)
     parser.add_argument('--greedy_eval', dest='greedy_eval', action='store_true')
     args = parser.parse_args()
-    if args.test:
-        build_and_test(run_id=args.run_id, test_date=args.test_date, greedy_eval=args.greedy_eval)
-    else:
-        build_and_train(run_id=args.run_id, greedy_eval=args.greedy_eval)
+    build_and_train(run_id=args.run_id, greedy_eval=args.greedy_eval, test=args.test, test_date=args.test_date)

@@ -6,8 +6,10 @@
 
 import torch
 from rlpyt.samplers.serial.sampler import SerialSampler
+from rlpyt.utils.logging.logger import record_tabular_misc_stat
 from rlpyt_utils import args
 from rlpyt_utils.agents_nn import AgentPgContinuous
+from rlpyt_utils.promp.promp import ProMP
 from rlpyt_utils.runners.minibatch_rl import MinibatchRlWithLog
 
 from promp_example.promp_envs import EnvProMP
@@ -27,9 +29,11 @@ sampler = SerialSampler(
     max_decorrelation_steps=0,
 )
 
+init_agent = args.load_initial_model_state(options)
+# init_agent['promp.cov_w_params'] *=0 + 0.1
 agent = AgentProMP(
     options.greedy_eval,
-    initial_model_state_dict=args.load_initial_model_state(options),
+    initial_model_state_dict=init_agent,
     model_kwargs=dict(
         value_hidden_sizes=[64, 64], value_hidden_nonlinearity=torch.nn.Tanh,
         policy_hidden_sizes=[64, 64], policy_hidden_nonlinearity=torch.nn.Tanh,
@@ -37,6 +41,8 @@ agent = AgentProMP(
         # policy_input_dims=[2, 3]
     ),
 )
+
+
 #
 # agent = AgentPgContinuous(
 #     options.greedy_eval,
@@ -50,10 +56,21 @@ agent = AgentProMP(
 #     ),
 # )
 
+def log_diagnostics(itr, algo, agent, sampler):
+    mp: ProMP = agent.model.promp
+    mu, cov = mp.mu_and_cov_w
+    std = cov.diagonal(dim1=-2, dim2=-1).sqrt().detach().numpy()
+    # for i in range(std.shape[0]):
+    #     record_tabular('agent/std{}'.format(i), std[i])
+    record_tabular_misc_stat('AgentCov', std)
+    record_tabular_misc_stat('AgentMu', mu.detach().numpy())
+
+
 runner = MinibatchRlWithLog(algo=args.get_ppo_from_options(options),
                             agent=agent, sampler=sampler, log_traj_window=32,
                             n_steps=int(500000 * sampler.batch_size),
                             log_interval_steps=int(horizon * 32),
+                            log_diagnostics_fun=log_diagnostics
                             )
 
 if not args.is_evaluation(options):

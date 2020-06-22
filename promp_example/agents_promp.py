@@ -24,10 +24,10 @@ class ModelProMP(torch.nn.Module):
         input_size = int(np.prod(observation_shape))
 
         self.promp = ProMP(n_dof=action_size, num_basis_functions=50, position_only=True, cov_w_is_diagonal=True,
-                           init_scale_cov_w=0.5, cov_eps=1e-7)
+                           init_scale_cov_w=0.5, cov_eps=1e-6)
         ref_time = torch.linspace(0., 1.)
         ref_y = torch.stack([1 - ref_time, 1 - ref_time], dim=-1).unsqueeze(-1)  # [T x D x 1]
-        self.promp.condition(0., torch.tensor([1., 1.]), 1e-2 ** 2 * torch.eye(2))
+        # self.promp.condition(0., torch.tensor([1., 1.]), 1e-3 ** 2 * torch.eye(2))
         # self.promp.condition(1., torch.tensor([0., 0.]), 1e-3 * torch.eye(2))
         self.promp.set_params_from_reference_trajectories(ref_y, t=ref_time, fixed_cov=0.05 ** 2)
 

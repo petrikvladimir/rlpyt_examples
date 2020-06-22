@@ -45,7 +45,7 @@ class EnvProMP(Env):
         rewards = dict()
         rewards['goal'] = 0.9 * np.exp(-0.5 * 10 * dist)
         rewards['vel'] = 0.1 * np.exp(-0.5 * 10 * velocity)
-        rewards['col'] = -10 * np.exp(-0.5 * self.colision_dist(self.state)) * self.in_collision(self.state)
+        rewards['col'] = -1 * np.exp(-0.5 * self.colision_dist(self.state)) * self.in_collision(self.state)
         # print(rewards)
         return EnvStep(self.get_obs(), sum(rewards.values()) / self.horizon, self.iter == self.horizon, EnvInfo())
 
